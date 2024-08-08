@@ -1,0 +1,81 @@
+---
+substitutions:
+ devicename: "gas-meter"
+ friendly_name: "Gas meter"
+
+esphome:
+ platform: ESP32
+ board: esp32-poe-iso
+ name: $devicename
+ comment: $friendly_name
+ build_path: .builds/$devicename
+
+ethernet:
+ type: LAN8720
+ mdc_pin: GPIO23
+ mdio_pin: GPIO18
+ clk_mode: GPIO17_OUT
+ phy_addr: 0
+ power_pin: GPIO12
+
+api:
+
+ota:
+  - platform: esphome
+#    password: !secret ota_password
+
+logger:
+
+globals:
+ - id: last_pulse_value
+   type: float
+   restore_value: false
+   initial_value: '0.0'
+
+ - id: total_pulses
+   type: float
+   restore_value: false
+   initial_value: '0.0'
+
+sensor:
+ # This sensor exposes the total_pulses variable to Home Assistant and
+ # converts it to m³ (1 pulse = 0.01m³ on my meter)
+ - platform: template
+   name: "Gas used"
+   device_class: gas
+   unit_of_measurement: "m³"
+   state_class: "total_increasing"
+   icon: "mdi:fire"
+   accuracy_decimals: 2
+
+   # 1 pulse on my meter equals 0,01 m³
+   lambda: |-
+       return id(total_pulses) * 0.01;
+
+ - platform: adc
+   id: adc_value
+   internal: true  # No need for this in Home Assistant
+   pin: GPIO33
+   attenuation: 12db
+
+   # Take a measurement every 100ms but only report the average 
+   # every second. This is to overcome the noisy ADC on the ESP32.
+   update_interval: 100ms
+   filters:
+     - throttle_average: 1sec
+
+   # When a new voltage measurement is received, calculate the 
+   # difference with the previous voltage. If it's larger than 
+   # a certain treshold, increase the pulse counter.
+   on_value:
+     then:
+       - lambda: |-
+           float last_reading = id(last_pulse_value);
+           float current_reading = id(adc_value).state;
+           float diff = last_reading - current_reading;
+
+           if(diff > 0.019){
+             id(total_pulses) += 1;
+           }
+
+           id(last_pulse_value) = current_reading;
