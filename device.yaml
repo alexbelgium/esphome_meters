@@ -25,9 +25,6 @@ ethernet:
   phy_addr: 0
   power_pin: GPIO12
 
-# Enable logging
-logger:
-
 # Enable Home Assistant API
 api:
 
@@ -42,20 +39,32 @@ dashboard_import:
 # To have a "next url" for improv serial
 web_server:
 
-globals:
-  - id: last_pulse_value
-    type: float
-    restore_value: false
-    initial_value: '0.0'
+# Enable logging
+logger:
 
+globals:
   - id: total_pulses
-    type: float
+    type: int
     restore_value: false
-    initial_value: '0.0'
+    initial_value: '0'
+
+# This is mainly here because the internal_filter of the pulse_counter on ESP32
+# can only be set to a maximum of 13us, which is way too low. The TCRT5000
+# sometimes rapidly switches from ON to OFF, causing a lot of "ghost" pulses.
+# The delayed_on filter will make sure that the sensor stayed ON for at least
+# 100ms before increasing the counter.
+binary_sensor:
+  - platform: gpio
+    id: internal_pulse_counter
+    pin: GPIO32
+    internal: true
+    filters:
+      - delayed_on: 100ms
+    on_press:
+      then:
+        - lambda: id(total_pulses) += 1;
 
 sensor:
- # This sensor exposes the total_pulses variable to Home Assistant and
- # converts it to m³ (1 pulse = 0.01m³ on my meter)
   - platform: template
     name: "Gas used"
     device_class: gas
@@ -63,35 +72,5 @@ sensor:
     state_class: "total_increasing"
     icon: "mdi:fire"
     accuracy_decimals: 2
-
-    # 1 pulse on my meter equals 0,01 m³
     lambda: |-
         return id(total_pulses) * 0.01;
-
-  - platform: adc
-    id: adc_value
-    internal: true  # No need for this in Home Assistant
-    pin: GPIO33
-    attenuation: 12db
-
-    # Take a measurement every 100ms but only report the average 
-    # every second. This is to overcome the noisy ADC on the ESP32.
-    update_interval: 100ms
-    filters:
-      - throttle_average: 1sec
-
-    # When a new voltage measurement is received, calculate the 
-    # difference with the previous voltage. If it's larger than 
-    # a certain treshold, increase the pulse counter.
-    on_value:
-      then:
-        - lambda: |-
-            float last_reading = id(last_pulse_value);
-            float current_reading = id(adc_value).state;
-            float diff = last_reading - current_reading;
-
-            if(diff > 0.019){
-              id(total_pulses) += 1;
-            }
-
-            id(last_pulse_value) = current_reading;
