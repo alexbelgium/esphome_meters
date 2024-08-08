@@ -5,7 +5,11 @@ Adapted from : https://simplyexplained.com/blog/tracking-gas-usage-with-esphome-
 ## Hardware
 ![image](https://github.com/user-attachments/assets/473c7816-8ce7-40c0-a6ea-3aa021b8cab4)
 
-## Software
+## yaml code
+
+See attached file.
+
+## Installation
 
 ### Manual
 
