@@ -68,7 +68,6 @@ sensor:
 # Uptime sensor
   - platform: uptime
     name: Gas Meter Uptime
-sensor:
   - platform: template
     name: "Gas used"
     device_class: gas
