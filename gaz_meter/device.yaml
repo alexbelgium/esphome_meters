@@ -65,6 +65,10 @@ binary_sensor:
         - lambda: id(total_pulses) += 1;
 
 sensor:
+# Uptime sensor
+  - platform: uptime
+    name: Gas Meter Uptime
+sensor:
   - platform: template
     name: "Gas used"
     device_class: gas
@@ -74,3 +78,8 @@ sensor:
     accuracy_decimals: 2
     lambda: |-
         return id(total_pulses) * 0.01;
+
+# Switch to restart    
+switch:
+  - platform: restart
+    name: gas meter monitor restart
