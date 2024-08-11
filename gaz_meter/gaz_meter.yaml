@@ -56,7 +56,7 @@ globals:
 binary_sensor:
   - platform: gpio
     id: internal_pulse_counter
-    pin: GPIO32
+    pin: GPIO33
     internal: true
     filters:
       - delayed_on: 100ms
